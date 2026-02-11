@@ -4,8 +4,38 @@ BlueGuard AI - Flask API Backend
 Toxicity Detection using toxic-bert model + Gemini AI for intelligent responses
 """
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
+import random
+import re
+import os
+import json
+import google.generativeai as genai
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# Initialize Flask app
+app = Flask(__name__)
+# Enable CORS for all routes (important for development, though relative path on same origin avoids issues)
+CORS(app) 
+
+# ... (omitting unchanged parts for brevity in tool call, but replace_file_content needs context)
+# Actually, I'll allow the tool to handle large file context if I use targeted replacement.
+# But here I need to change import AND the route function.
+# I will use two chunks if possible, or just replace the import line and then the function.
+# The tool supports multiple chunks in `multi_replace_file_content` but I have `replace_file_content`.
+# I will make two separate calls or replace a larger block if needed.
+# Wait, `replace_file_content` is for single contiguous block.
+# Imports are at line 7. Route is at 566.
+# I will use multi_replace_file_content if available?
+# No, I only have `replace_file_content` available in my thought process?
+# Let me check available tools.
+# Yes, `multi_replace_file_content` IS available.
+
+# Use multi_replace_file_content.
+
 import random
 import re
 import os
@@ -565,15 +595,8 @@ def health_check():
 
 @app.route('/', methods=['GET'])
 def home():
-    """Root endpoint with API information."""
-    return jsonify({
-        "name": "BlueGuard AI API",
-        "version": "1.0.0",
-        "endpoints": {
-            "POST /api/check-safety": "Check message safety and get response",
-            "GET /api/health": "Health check endpoint"
-        }
-    })
+    """Serve the frontend (index.html)."""
+    return send_from_directory('.', 'index.html')
 
 
 if __name__ == '__main__':
