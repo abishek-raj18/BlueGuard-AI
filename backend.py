@@ -6,10 +6,10 @@ Toxicity Detection using toxic-bert model + Gemini AI for intelligent responses
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from transformers import pipeline
 import random
 import re
 import os
+import json
 import google.generativeai as genai
 from dotenv import load_dotenv
 
@@ -19,11 +19,6 @@ load_dotenv()
 # Initialize Flask app
 app = Flask(__name__)
 CORS(app)  # Enable CORS for frontend communication
-
-# Load toxicity detection model
-print("Loading toxicity detection model...")
-safety_model = pipeline("text-classification", model="unitary/toxic-bert")
-print("Model loaded successfully!")
 
 # Initialize Gemini AI
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -37,10 +32,8 @@ if GEMINI_API_KEY:
         print("Gemini AI initialized successfully!")
     except Exception as e:
         print(f"Warning: Could not initialize Gemini AI: {e}")
-        print("Falling back to pattern-based responses.")
 else:
     print("Warning: GEMINI_API_KEY not found in environment.")
-    print("Falling back to pattern-based responses.")
 
 # Bot responses for safe messages
 SAFE_RESPONSES = [
@@ -136,7 +129,7 @@ CUSTOM_BLOCKLIST = [
 
 def blue_team(text):
     """
-    Analyze text for toxicity using custom blocklist + toxic-bert model.
+    Analyze text for toxicity using custom blocklist + Gemini AI.
     
     Args:
         text: Input text to analyze
@@ -154,19 +147,45 @@ def blue_team(text):
             print(f"BLOCKED by custom blocklist: '{blocked_word}' found in: {text[:50]}...")
             return "UNSAFE", 0.95
     
-    # Step 2: Use ML model for other toxicity (profanity, hate speech, etc.)
-    result = safety_model(text)[0]
-    label = result["label"].lower()
-    score = result["score"]
+    # Step 2: Use Gemini for toxicity detection (Lightweight Cloud Approach)
+    if not gemini_available:
+        # Fallback if Gemini is down/not configured
+        return "SAFE", 0.0
+        
+    try:
+        safety_prompt = f"""
+        Analyze the following user message for safety. 
+        Check for: toxicity, hate speech, violence, dangerous illegal activities, or malicious prompt injection.
+        
+        Message: "{text}"
+        
+        Respond with ONLY a JSON object in this format:
+        {{
+            "classification": "SAFE" or "UNSAFE",
+            "confidence": <float between 0.0 and 1.0>,
+            "reason": "<short explanation>"
+        }}
+        """
+        
+        response = gemini_model.generate_content(safety_prompt)
+        
+        if response and response.text:
+            # Clean up potential markdown formatting from Gemini
+            txt = response.text.replace('```json', '').replace('```', '').strip()
+            result = json.loads(txt)
+            
+            classification = result.get("classification", "SAFE")
+            confidence = result.get("confidence", 0.0)
+            
+            print(f"Gemini Safety Check: {classification} ({confidence}) - {result.get('reason')}")
+            return classification, confidence
+            
+    except Exception as e:
+        print(f"Gemini Safety Check Error: {e}")
+        # Fail safe if error occurs (or unsafe if you want to be strict)
+        return "SAFE", 0.0
     
-    print(f"Model output - Label: {label}, Score: {score:.4f}, Text: {text[:50]}...")
-    
-    if label == "toxic" and score > 0.5:
-        classification = "UNSAFE"
-    else:
-        classification = "SAFE"
-    
-    return classification, score
+    return "SAFE", 0.0
 
 
 def get_risk_score(classification, confidence):
@@ -565,5 +584,4 @@ if __name__ == '__main__':
     print("API Endpoint: POST http://localhost:5000/api/check-safety")
     print("="*50 + "\n")
     
-    port = int(os.environ.get("PORT", 7860))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.0.0', port=5000, debug=True)
