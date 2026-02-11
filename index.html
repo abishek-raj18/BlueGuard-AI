@@ -1119,7 +1119,7 @@
 
         // API Call to moderation backend
         async function moderateMessage(message) {
-            const API_URL = 'http://localhost:5000/api/check-safety';
+            const API_URL = 'https://blueguard-ai.onrender.com/api/check-safety';
             
             try {
                 const response = await fetch(API_URL, {
