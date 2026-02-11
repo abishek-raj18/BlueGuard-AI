@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlueGuard AI</title>
+    <meta name="description" content="AI Safety Chatbot with real-time content moderation and risk assessment">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Light Mode Colors */
+            --bg-primary: #eef2ff; /* Soft Indigo 50 - Lite Blue */
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #e0e7ff; /* Indigo 100 */
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --border-color: #e2e8f0;
+            --accent-primary: #6366f1;
+            --accent-secondary: #818cf8;
+            --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            --user-bubble: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            --bot-bubble: #ffffff;
+            --sidebar-bg: #ffffff;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+            --risk-low: #22c55e;
+            --risk-medium: #f59e0b;
+            --risk-high: #ef4444;
+            --warning-bg: #fef2f2;
+            --warning-border: #fecaca;
+            --warning-text: #dc2626;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --text-muted: #64748b;
+            --border-color: #334155;
+            --bot-bubble: #1e293b;
+            --sidebar-bg: #1e293b;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+            --warning-bg: #450a0a;
+            --warning-border: #991b1b;
+            --warning-text: #fca5a5;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+
+        /* Layout */
+        .app-container {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 320px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow-md);
+            transition: transform 0.3s ease, background 0.3s ease;
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sidebar-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+
+        .sidebar-subtitle {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .sidebar-content {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        /* Risk Score Card */
+        .risk-card {
+            background: var(--bg-tertiary);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            transition: background 0.3s ease;
+        }
+
+        .risk-card-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 16px;
+        }
+
+        .risk-score-display {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .risk-score-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 700;
+            color: white;
+            position: relative;
+            background: conic-gradient(var(--risk-color, var(--risk-low)) calc(var(--score, 0) * 3.6deg), var(--bg-primary) 0deg);
+        }
+
+        .risk-score-circle::before {
+            content: '';
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: var(--bg-tertiary);
+            border-radius: 50%;
+        }
+
+        .risk-score-value {
+            position: relative;
+            z-index: 1;
+            color: var(--text-primary);
+        }
+
+        .risk-label {
+            font-size: 14px;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .risk-low { background: rgba(34, 197, 94, 0.15); color: var(--risk-low); }
+        .risk-medium { background: rgba(245, 158, 11, 0.15); color: var(--risk-medium); }
+        .risk-high { background: rgba(239, 68, 68, 0.15); color: var(--risk-high); }
+
+        .risk-bar {
+            height: 8px;
+            background: var(--bg-primary);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .risk-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease, background 0.3s ease;
+        }
+
+        /* Category Card */
+        .category-card {
+            background: var(--bg-tertiary);
+            border-radius: 16px;
+            padding: 24px;
+            transition: background 0.3s ease;
+        }
+
+        .category-card-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 16px;
+        }
+
+        .category-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: var(--accent-gradient);
+            color: white;
+            border-radius: 24px;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 12px;
+        }
+
+        .category-icon {
+            width: 18px;
+            height: 18px;
+        }
+
+        .category-description {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .no-detection {
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        /* Main Chat Area */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 24px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            transition: background 0.3s ease;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+
+        .menu-toggle:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--accent-gradient);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-md);
+        }
+
+        .logo-icon svg {
+            width: 24px;
+            height: 24px;
+            color: white;
+        }
+
+        .logo-text {
+            font-size: 18px;
+            font-weight: 700;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Theme Toggle */
+        .theme-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-tertiary);
+            padding: 6px;
+            border-radius: 24px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .theme-option {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: var(--text-muted);
+        }
+
+        .theme-option.active {
+            background: var(--bg-secondary);
+            color: var(--accent-primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .theme-option svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Online Status */
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(34, 197, 94, 0.1);
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--risk-low);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--risk-low);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Chat Container */
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Welcome Message */
+        .welcome-message {
+            text-align: center;
+            padding: 48px 24px;
+            max-width: 500px;
+            margin: auto;
+        }
+
+        .welcome-icon {
+            width: 80px;
+            height: 80px;
+            background: var(--accent-gradient);
+            border-radius: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .welcome-icon svg {
+            width: 40px;
+            height: 40px;
+            color: white;
+        }
+
+        .welcome-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .welcome-text {
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        .feature-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .feature-tag {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: var(--bg-tertiary);
+            border-radius: 20px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            transition: background 0.3s ease;
+        }
+
+        .feature-tag svg {
+            width: 16px;
+            height: 16px;
+            color: var(--accent-primary);
+        }
+
+        /* Message Bubbles */
+        .message {
+            display: flex;
+            gap: 12px;
+            max-width: 75%;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            margin-left: auto;
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .message.user .message-avatar {
+            background: var(--accent-gradient);
+            color: white;
+        }
+
+        .message.bot .message-avatar {
+            background: var(--bg-tertiary);
+            color: var(--accent-primary);
+        }
+
+        .message-avatar svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .message-content {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .message-bubble {
+            padding: 14px 18px;
+            border-radius: 20px;
+            font-size: 14px;
+            line-height: 1.6;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .message.user .message-bubble {
+            background: var(--user-bubble);
+            color: white;
+            border-bottom-right-radius: 6px;
+        }
+
+        .message.bot .message-bubble {
+            background: var(--bot-bubble);
+            color: var(--text-primary);
+            border-bottom-left-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: var(--text-muted);
+            padding: 0 8px;
+        }
+
+        .message.user .message-time {
+            text-align: right;
+        }
+
+        /* Warning Alert */
+        .warning-alert {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 16px;
+            background: var(--warning-bg);
+            border: 1px solid var(--warning-border);
+            border-radius: 12px;
+            margin: 8px 0;
+            max-width: 75%;
+            animation: shake 0.5s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .warning-icon {
+            width: 24px;
+            height: 24px;
+            color: var(--warning-text);
+            flex-shrink: 0;
+        }
+
+        .warning-content {
+            flex: 1;
+        }
+
+        .warning-title {
+            font-weight: 600;
+            color: var(--warning-text);
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+
+        .warning-text {
+            font-size: 13px;
+            color: var(--warning-text);
+            opacity: 0.9;
+            line-height: 1.5;
+        }
+
+        /* Input Area */
+        .input-container {
+            padding: 20px 24px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            transition: background 0.3s ease;
+        }
+
+        .input-wrapper {
+            display: flex;
+            align-items: flex-end;
+            gap: 12px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .input-box {
+            flex: 1;
+            display: flex;
+            align-items: flex-end;
+            background: var(--bg-tertiary);
+            border-radius: 24px;
+            padding: 4px;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .input-box:focus-within {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        }
+
+        .message-input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: 12px 16px;
+            font-size: 14px;
+            color: var(--text-primary);
+            resize: none;
+            min-height: 24px;
+            max-height: 120px;
+            font-family: inherit;
+            line-height: 1.5;
+        }
+
+        .message-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .message-input:focus {
+            outline: none;
+        }
+
+        .send-button {
+            width: 44px;
+            height: 44px;
+            background: var(--accent-gradient);
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-md);
+        }
+
+        .send-button:hover {
+            transform: scale(1.05);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .send-button:active {
+            transform: scale(0.95);
+        }
+
+        .send-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .send-button svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Typing Indicator */
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 12px 16px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-primary);
+            border-radius: 50%;
+            animation: typingBounce 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typingBounce {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-8px); }
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                transform: translateX(-100%);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .sidebar-overlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 99;
+            }
+
+            .sidebar-overlay.open {
+                display: block;
+            }
+
+            .menu-toggle {
+                display: flex;
+            }
+
+            .message {
+                max-width: 90%;
+            }
+
+            .warning-alert {
+                max-width: 90%;
+            }
+
+            .logo-text {
+                font-size: 16px;
+            }
+
+            .status-indicator span {
+                display: none;
+            }
+
+            .header {
+                padding: 12px 16px;
+            }
+
+            .chat-container {
+                padding: 16px;
+            }
+
+            .input-container {
+                padding: 16px;
+            }
+        }
+
+        /* Scrollbar Styles */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Overlay for Mobile -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+        
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2 class="sidebar-title">Safety Analysis</h2>
+                <p class="sidebar-subtitle">Real-time content moderation</p>
+            </div>
+            <div class="sidebar-content">
+                <!-- Risk Score Card -->
+                <div class="risk-card">
+                    <h3 class="risk-card-title">Risk Score</h3>
+                    <div class="risk-score-display">
+                        <div class="risk-score-circle" id="riskCircle" style="--score: 0; --risk-color: var(--risk-low);">
+                            <span class="risk-score-value" id="riskValue">0</span>
+                        </div>
+                        <span class="risk-label risk-low" id="riskLabel">Safe</span>
+                    </div>
+                    <div class="risk-bar">
+                        <div class="risk-bar-fill" id="riskBarFill" style="width: 0%; background: var(--risk-low);"></div>
+                    </div>
+                </div>
+
+                <!-- Category Card -->
+                <div class="category-card">
+                    <h3 class="category-card-title">Detected Category</h3>
+                    <div id="categoryDisplay">
+                        <p class="no-detection">No issues detected</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <div class="header-left">
+                    <button class="menu-toggle" id="menuToggle" aria-label="Toggle sidebar">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 12h18M3 6h18M3 18h18"/>
+                        </svg>
+                    </button>
+                    <div class="logo">
+                        <div class="logo-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                <path d="M9 12l2 2 4-4"/>
+                            </svg>
+                        </div>
+                        <span class="logo-text">BlueGuard AI</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="status-indicator">
+                        <span class="status-dot"></span>
+                        <span>Online</span>
+                    </div>
+                    <div class="theme-toggle" id="themeToggle">
+                        <button class="theme-option active" id="lightMode" aria-label="Light mode">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="5"/>
+                                <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+                            </svg>
+                        </button>
+                        <button class="theme-option" id="darkMode" aria-label="Dark mode">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Chat Container -->
+            <div class="chat-container" id="chatContainer">
+                <!-- Welcome Message -->
+                <div class="welcome-message" id="welcomeMessage">
+                    <div class="welcome-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            <path d="M9 12l2 2 4-4"/>
+                        </svg>
+                    </div>
+                    <h1 class="welcome-title">Welcome to BlueGuard AI</h1>
+                    <p class="welcome-text">
+                        Ask me anything! I'm equipped with advanced AI safety measures to ensure a secure and helpful conversation experience.
+                    </p>
+                    <div class="feature-list">
+                        <span class="feature-tag">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            </svg>
+                            Content Moderation
+                        </span>
+                        <span class="feature-tag">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M12 6v6l4 2"/>
+                            </svg>
+                            Real-time Analysis
+                        </span>
+                        <span class="feature-tag">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                <polyline points="22 4 12 14.01 9 11.01"/>
+                            </svg>
+                            Safety First
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <div class="input-box">
+                        <textarea 
+                            class="message-input" 
+                            id="messageInput" 
+                            placeholder="Type your message here..."
+                            rows="1"
+                        ></textarea>
+                    </div>
+                    <button class="send-button" id="sendButton" aria-label="Send message">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // DOM Elements
+        const chatContainer = document.getElementById('chatContainer');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const welcomeMessage = document.getElementById('welcomeMessage');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+        const menuToggle = document.getElementById('menuToggle');
+        const themeToggle = document.getElementById('themeToggle');
+        const lightModeBtn = document.getElementById('lightMode');
+        const darkModeBtn = document.getElementById('darkMode');
+        const riskCircle = document.getElementById('riskCircle');
+        const riskValue = document.getElementById('riskValue');
+        const riskLabel = document.getElementById('riskLabel');
+        const riskBarFill = document.getElementById('riskBarFill');
+        const categoryDisplay = document.getElementById('categoryDisplay');
+
+        // State
+        let isProcessing = false;
+
+        // Category Icons
+        const categoryIcons = {
+            harmful_content: `<svg class="category-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+            misinformation: `<svg class="category-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+            jailbreaking: `<svg class="category-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`,
+            hate_speech: `<svg class="category-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>`,
+            safe: `<svg class="category-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`
+        };
+
+        const categoryDescriptions = {
+            harmful_content: 'This message may contain content that could be harmful, dangerous, or inappropriate.',
+            misinformation: 'This message may contain false or misleading information that could spread inaccuracies.',
+            jailbreaking: 'This message appears to be an attempt to bypass safety measures or extract restricted information.',
+            hate_speech: 'This message may contain discriminatory, offensive, or hateful language targeting individuals or groups.',
+            safe: 'No safety concerns detected in this message.'
+        };
+
+        // Theme Management
+        function setTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+            
+            if (theme === 'dark') {
+                darkModeBtn.classList.add('active');
+                lightModeBtn.classList.remove('active');
+            } else {
+                lightModeBtn.classList.add('active');
+                darkModeBtn.classList.remove('active');
+            }
+        }
+
+        // Initialize theme
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        setTheme(savedTheme);
+
+        lightModeBtn.addEventListener('click', () => setTheme('light'));
+        darkModeBtn.addEventListener('click', () => setTheme('dark'));
+
+        // Sidebar Toggle (Mobile)
+        function toggleSidebar() {
+            sidebar.classList.toggle('open');
+            sidebarOverlay.classList.toggle('open');
+        }
+
+        menuToggle.addEventListener('click', toggleSidebar);
+        sidebarOverlay.addEventListener('click', toggleSidebar);
+
+        // Auto-resize textarea
+        messageInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+
+        // Send message on Enter (without Shift)
+        messageInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        sendButton.addEventListener('click', sendMessage);
+
+        // Format time
+        function formatTime(date) {
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // Create message element
+        function createMessageElement(content, isUser, time) {
+            const message = document.createElement('div');
+            message.className = `message ${isUser ? 'user' : 'bot'}`;
+            
+            const avatar = isUser 
+                ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`
+                : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>`;
+            
+            message.innerHTML = `
+                <div class="message-avatar">${avatar}</div>
+                <div class="message-content">
+                    <div class="message-bubble">${content}</div>
+                    <span class="message-time">${time}</span>
+                </div>
+            `;
+            
+            return message;
+        }
+
+        // Create warning alert
+        function createWarningAlert(category, description) {
+            const alert = document.createElement('div');
+            alert.className = 'warning-alert';
+            alert.innerHTML = `
+                <svg class="warning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <div class="warning-content">
+                    <div class="warning-title">⚠️ Message Blocked - ${category.replace(/_/g, ' ').toUpperCase()}</div>
+                    <div class="warning-text">${description}</div>
+                </div>
+            `;
+            return alert;
+        }
+
+        // Create typing indicator
+        function createTypingIndicator() {
+            const indicator = document.createElement('div');
+            indicator.className = 'message bot';
+            indicator.id = 'typingIndicator';
+            indicator.innerHTML = `
+                <div class="message-avatar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        <path d="M9 12l2 2 4-4"/>
+                    </svg>
+                </div>
+                <div class="message-content">
+                    <div class="message-bubble">
+                        <div class="typing-indicator">
+                            <span class="typing-dot"></span>
+                            <span class="typing-dot"></span>
+                            <span class="typing-dot"></span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            return indicator;
+        }
+
+        // Update risk display
+        function updateRiskDisplay(score, category, isBlocked) {
+            // Update circle
+            riskCircle.style.setProperty('--score', score);
+            riskValue.textContent = score;
+            
+            // Determine risk level
+            let riskClass, riskText, riskColor;
+            if (score <= 30) {
+                riskClass = 'risk-low';
+                riskText = 'Safe';
+                riskColor = 'var(--risk-low)';
+            } else if (score <= 70) {
+                riskClass = 'risk-medium';
+                riskText = 'Caution';
+                riskColor = 'var(--risk-medium)';
+            } else {
+                riskClass = 'risk-high';
+                riskText = 'High Risk';
+                riskColor = 'var(--risk-high)';
+            }
+            
+            // Update label
+            riskLabel.className = `risk-label ${riskClass}`;
+            riskLabel.textContent = riskText;
+            
+            // Update circle color
+            riskCircle.style.setProperty('--risk-color', riskColor);
+            
+            // Update bar
+            riskBarFill.style.width = `${score}%`;
+            riskBarFill.style.background = riskColor;
+            
+            // Update category display
+            if (category && category !== 'safe') {
+                const icon = categoryIcons[category] || categoryIcons.harmful_content;
+                const description = categoryDescriptions[category] || 'Potential safety concern detected.';
+                categoryDisplay.innerHTML = `
+                    <div class="category-tag">${icon}${category.replace(/_/g, ' ')}</div>
+                    <p class="category-description">${description}</p>
+                `;
+            } else {
+                categoryDisplay.innerHTML = `
+                    <div class="category-tag" style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);">
+                        ${categoryIcons.safe}
+                        safe
+                    </div>
+                    <p class="category-description">${categoryDescriptions.safe}</p>
+                `;
+            }
+        }
+
+        // API Call to moderation backend
+        async function moderateMessage(message) {
+            const API_URL = 'http://localhost:5000/api/check-safety';
+            
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('API request failed');
+                }
+                
+                return await response.json();
+                
+            } catch (error) {
+                console.error('Moderation API error:', error);
+                return {
+                    is_blocked: false,
+                    risk_score: 0,
+                    category: 'safe',
+                    response: "I apologize, but I couldn't connect to the safety server. Please make sure the backend is running."
+                };
+            }
+        }
+
+        // Send message
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message || isProcessing) return;
+            
+            isProcessing = true;
+            sendButton.disabled = true;
+            
+            // Hide welcome message
+            if (welcomeMessage) {
+                welcomeMessage.style.display = 'none';
+            }
+            
+            // Add user message
+            const userTime = formatTime(new Date());
+            chatContainer.appendChild(createMessageElement(message, true, userTime));
+            
+            // Clear input
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            
+            // Show typing indicator
+            const typingIndicator = createTypingIndicator();
+            chatContainer.appendChild(typingIndicator);
+            
+            // Scroll to bottom
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            // Call moderation API
+            const result = await moderateMessage(message);
+            
+            // Remove typing indicator
+            typingIndicator.remove();
+            
+            // Update risk display
+            updateRiskDisplay(result.risk_score, result.category, result.is_blocked);
+            
+            if (result.is_blocked) {
+                // Show warning alert
+                const warning = createWarningAlert(result.category, categoryDescriptions[result.category] || 'This message has been blocked for safety reasons.');
+                chatContainer.appendChild(warning);
+            } else {
+                // Add bot response
+                const botTime = formatTime(new Date());
+                chatContainer.appendChild(createMessageElement(result.response, false, botTime));
+            }
+            
+            // Scroll to bottom
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            isProcessing = false;
+            sendButton.disabled = false;
+            messageInput.focus();
+        }
+
+        // Initialize
+        messageInput.focus();
+    </script>
+</body>
+</html>
