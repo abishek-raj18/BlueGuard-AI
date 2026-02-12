@@ -377,6 +377,111 @@
             50% { opacity: 0.5; }
         }
 
+        /* Auth UI */
+        .auth-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .login-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--accent-gradient);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, boxShadow 0.2s;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .login-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .login-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .user-profile {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            padding: 4px;
+            padding-right: 12px;
+            background: var(--bg-tertiary);
+            border-radius: 24px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--accent-primary);
+        }
+
+        .user-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            max-width: 100px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .auth-dropdown {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 8px;
+            min-width: 140px;
+            box-shadow: var(--shadow-lg);
+            display: none;
+            z-index: 1000;
+        }
+
+        .user-profile:hover .auth-dropdown {
+            display: block;
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            width: 100%;
+            border: none;
+            background: none;
+            color: var(--text-primary);
+            font-size: 13px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            text-align: left;
+        }
+
+        .dropdown-item:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .dropdown-item.logout {
+            color: var(--risk-high);
+        }
+
         /* Chat Container */
         .chat-container {
             flex: 1;
@@ -837,6 +942,28 @@
                         <span class="status-dot"></span>
                         <span>Online</span>
                     </div>
+
+                    <div class="auth-container">
+                        <button class="login-btn" id="loginBtn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M13.8 12H3"/>
+                            </svg>
+                            Sign In
+                        </button>
+                        <div class="user-profile" id="userProfile">
+                            <img src="" alt="Avatar" class="user-avatar" id="userAvatar">
+                            <span class="user-name" id="userName">User</span>
+                            <div class="auth-dropdown">
+                                <button class="dropdown-item logout" id="logoutBtn">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
+                                    </svg>
+                                    Sign Out
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="theme-toggle" id="themeToggle">
                         <button class="theme-option active" id="lightMode" aria-label="Light mode">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -917,6 +1044,8 @@
         // Import the functions you need from the SDKs you need
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-app.js";
         import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-analytics.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, where, orderBy, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-firestore.js";
 
         // Your web app's Firebase configuration
         const firebaseConfig = {
@@ -932,6 +1061,9 @@
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const analytics = getAnalytics(app);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
 
         // DOM Elements
         const chatContainer = document.getElementById('chatContainer');
@@ -949,9 +1081,15 @@
         const riskLabel = document.getElementById('riskLabel');
         const riskBarFill = document.getElementById('riskBarFill');
         const categoryDisplay = document.getElementById('categoryDisplay');
+        const loginBtn = document.getElementById('loginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const userProfile = document.getElementById('userProfile');
+        const userAvatar = document.getElementById('userAvatar');
+        const userName = document.getElementById('userName');
 
         // State
         let isProcessing = false;
+        let currentUser = null;
 
         // Category Icons
         const categoryIcons = {
@@ -1182,6 +1320,11 @@
             // Add user message
             const userTime = formatTime(new Date());
             chatContainer.appendChild(createMessageElement(message, true, userTime));
+
+            // Save user message to Firestore if logged in
+            if (currentUser) {
+                saveMessage(currentUser.uid, message, true);
+            }
             
             // Clear input
             messageInput.value = '';
@@ -1207,10 +1350,20 @@
                 // Show warning alert
                 const warning = createWarningAlert(result.category, categoryDescriptions[result.category] || 'This message has been blocked for safety reasons.');
                 chatContainer.appendChild(warning);
+                
+                // Save blocked attempt to Firestore
+                if (currentUser) {
+                    saveMessage(currentUser.uid, message, true, result.risk_score, result.category);
+                }
             } else {
                 // Add bot response
                 const botTime = formatTime(new Date());
                 chatContainer.appendChild(createMessageElement(result.response, false, botTime));
+
+                // Save bot response to Firestore
+                if (currentUser) {
+                    saveMessage(currentUser.uid, result.response, false, result.risk_score, result.category);
+                }
             }
             
             // Scroll to bottom
@@ -1223,6 +1376,100 @@
 
         // Initialize
         messageInput.focus();
+
+        // --- Firebase Logic ---
+
+        // Auth State Handler
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            if (user) {
+                // User is signed in
+                loginBtn.style.display = 'none';
+                userProfile.style.display = 'flex';
+                userAvatar.src = user.photoURL || 'https://via.placeholder.com/32';
+                userName.textContent = user.displayName || 'User';
+                
+                // Load history
+                loadChatHistory(user.uid);
+            } else {
+                // User is signed out
+                loginBtn.style.display = 'flex';
+                userProfile.style.display = 'none';
+                
+                // Clear chat if desired, or show welcome
+                chatContainer.innerHTML = '';
+                if (welcomeMessage) {
+                    chatContainer.appendChild(welcomeMessage);
+                    welcomeMessage.style.display = 'block';
+                }
+            }
+        });
+
+        // Sign In
+        async function signIn() {
+            try {
+                await signInWithPopup(auth, provider);
+            } catch (error) {
+                console.error("Auth Error:", error);
+                alert("Failed to sign in. Please try again.");
+            }
+        }
+
+        // Sign Out
+        async function handleSignOut() {
+            try {
+                await signOut(auth);
+            } catch (error) {
+                console.error("Sign Out Error:", error);
+            }
+        }
+
+        loginBtn.addEventListener('click', signIn);
+        logoutBtn.addEventListener('click', handleSignOut);
+
+        // Firestore: Save Message
+        async function saveMessage(userId, content, isUser, riskScore = 0, category = 'safe') {
+            try {
+                await addDoc(collection(db, "chats"), {
+                    uid: userId,
+                    content: content,
+                    isUser: isUser,
+                    riskScore: riskScore,
+                    category: category,
+                    timestamp: serverTimestamp()
+                });
+            } catch (error) {
+                console.error("Error saving message:", error);
+            }
+        }
+
+        // Firestore: Load History
+        async function loadChatHistory(userId) {
+            const q = query(
+                collection(db, "chats"),
+                where("uid", "==", userId),
+                orderBy("timestamp", "asc")
+            );
+
+            try {
+                const querySnapshot = await getDocs(q);
+                if (querySnapshot.empty) return;
+
+                // Hide welcome if we have messages
+                if (welcomeMessage) welcomeMessage.style.display = 'none';
+                chatContainer.innerHTML = '';
+
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const time = data.timestamp ? formatTime(data.timestamp.toDate()) : formatTime(new Date());
+                    chatContainer.appendChild(createMessageElement(data.content, data.isUser, time));
+                });
+
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            } catch (error) {
+                console.error("Error loading history:", error);
+            }
+        }
     </script>
 </body>
 </html>
