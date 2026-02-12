@@ -197,7 +197,17 @@ def blue_team(text):
         }}
         """
         
-        response = gemini_model.generate_content(safety_prompt)
+        # Configure safety settings to BLOCK_NONE so Gemini can analyze toxic content without blocking
+        from google.generativeai.types import HarmCategory, HarmBlockThreshold
+        
+        safety_settings = {
+            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+        }
+        
+        response = gemini_model.generate_content(safety_prompt, safety_settings=safety_settings)
         
         if response and response.text:
             # Clean up potential markdown formatting from Gemini
