@@ -6,49 +6,52 @@
     <title>BlueGuard AI</title>
     <meta name="description" content="AI Safety Chatbot with real-time content moderation and risk assessment">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         :root {
-            /* Light Mode Colors */
-            --bg-primary: #eef2ff; /* Soft Indigo 50 - Lite Blue */
-            --bg-secondary: #ffffff;
-            --bg-tertiary: #e0e7ff; /* Indigo 100 */
+            /* Light Mode Glassmorphism Colors */
+            --bg-primary: #eef2ff;
+            --bg-secondary: rgba(255, 255, 255, 0.7);
+            --bg-tertiary: rgba(224, 231, 255, 0.5);
             --text-primary: #1e293b;
             --text-secondary: #64748b;
             --text-muted: #94a3b8;
-            --border-color: #e2e8f0;
+            --border-color: rgba(226, 232, 240, 0.5);
             --accent-primary: #6366f1;
             --accent-secondary: #818cf8;
             --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
             --user-bubble: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-            --bot-bubble: #ffffff;
-            --sidebar-bg: #ffffff;
+            --bot-bubble: rgba(255, 255, 255, 0.8);
+            --sidebar-bg: rgba(255, 255, 255, 0.6);
             --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+            --shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.08);
             --risk-low: #22c55e;
             --risk-medium: #f59e0b;
             --risk-high: #ef4444;
-            --warning-bg: #fef2f2;
-            --warning-border: #fecaca;
+            --warning-bg: rgba(254, 242, 242, 0.7);
+            --warning-border: rgba(254, 202, 202, 0.5);
             --warning-text: #dc2626;
+            --glass-blur: blur(12px);
         }
 
         [data-theme="dark"] {
             --bg-primary: #0f172a;
-            --bg-secondary: #1e293b;
-            --bg-tertiary: #334155;
+            --bg-secondary: rgba(30, 41, 59, 0.7);
+            --bg-tertiary: rgba(51, 65, 85, 0.5);
             --text-primary: #f1f5f9;
             --text-secondary: #cbd5e1;
             --text-muted: #64748b;
-            --border-color: #334155;
-            --bot-bubble: #1e293b;
-            --sidebar-bg: #1e293b;
+            --border-color: rgba(51, 65, 85, 0.5);
+            --bot-bubble: rgba(30, 41, 59, 0.8);
+            --sidebar-bg: rgba(30, 41, 59, 0.6);
             --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
             --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
-            --warning-bg: #450a0a;
-            --warning-border: #991b1b;
+            --shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.5);
+            --warning-bg: rgba(69, 10, 10, 0.7);
+            --warning-border: rgba(153, 27, 27, 0.5);
             --warning-text: #fca5a5;
+            --glass-blur: blur(12px);
         }
 
         * {
@@ -76,6 +79,8 @@
         .sidebar {
             width: 320px;
             background: var(--sidebar-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
             border-right: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
@@ -250,6 +255,8 @@
             justify-content: space-between;
             padding: 16px 24px;
             background: var(--bg-secondary);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
             border-bottom: 1px solid var(--border-color);
             box-shadow: var(--shadow-sm);
             transition: background 0.3s ease;
@@ -482,6 +489,60 @@
             color: var(--risk-high);
         }
 
+        /* Sidebar Buttons */
+        .export-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 14px;
+            margin: 20px 24px;
+            background: var(--bg-secondary);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .export-button:hover {
+            background: var(--bg-tertiary);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .export-button svg {
+            width: 18px;
+            height: 18px;
+            color: var(--accent-primary);
+        }
+
+        .attach-button {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s;
+        }
+
+        .attach-button:hover {
+            color: var(--accent-primary);
+        }
+
+        .attach-button svg {
+            width: 20px;
+            height: 20px;
+        }
+
         /* Chat Container */
         .chat-container {
             flex: 1;
@@ -563,15 +624,13 @@
         .message {
             display: flex;
             gap: 12px;
-            max-width: 75%;
-            animation: slideIn 0.3s ease;
+            max-width: 85%;
+            animation: messageAppear 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+            transform: translateY(15px);
         }
 
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
+        @keyframes messageAppear {
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -620,6 +679,9 @@
             font-size: 14px;
             line-height: 1.6;
             box-shadow: var(--shadow-sm);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--border-color);
         }
 
         .message.user .message-bubble {
@@ -914,6 +976,14 @@
                         <p class="no-detection">No issues detected</p>
                     </div>
                 </div>
+
+                <!-- Export History -->
+                <button class="export-button" id="exportBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                    </svg>
+                    Export Transcript (PDF)
+                </button>
             </div>
         </aside>
 
@@ -1023,6 +1093,12 @@
             <div class="input-container">
                 <div class="input-wrapper">
                     <div class="input-box">
+                        <button class="attach-button" id="attachBtn" aria-label="Attach file">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                            </svg>
+                        </button>
+                        <input type="file" id="fileInput" hidden>
                         <textarea 
                             class="message-input" 
                             id="messageInput" 
@@ -1046,6 +1122,7 @@
         import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-analytics.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, query, where, orderBy, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-firestore.js";
+        import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-storage.js";
 
         // Your web app's Firebase configuration
         const firebaseConfig = {
@@ -1063,6 +1140,7 @@
         const analytics = getAnalytics(app);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        const storage = getStorage(app);
         const provider = new GoogleAuthProvider();
 
         // DOM Elements
@@ -1086,10 +1164,14 @@
         const userProfile = document.getElementById('userProfile');
         const userAvatar = document.getElementById('userAvatar');
         const userName = document.getElementById('userName');
+        const attachBtn = document.getElementById('attachBtn');
+        const fileInput = document.getElementById('fileInput');
+        const exportBtn = document.getElementById('exportBtn');
 
         // State
         let isProcessing = false;
         let currentUser = null;
+        let selectedFile = null;
 
         // Category Icons
         const categoryIcons = {
@@ -1319,11 +1401,30 @@
             
             // Add user message
             const userTime = formatTime(new Date());
-            chatContainer.appendChild(createMessageElement(message, true, userTime));
+            
+            let messageContent = message;
+            let fileURL = null;
+
+            // Handle file upload if present
+            if (selectedFile && currentUser) {
+                try {
+                    attachBtn.classList.add('loading');
+                    fileURL = await uploadFile(selectedFile, currentUser.uid);
+                    messageContent += `\n\n[Attached File: ${selectedFile.name}](${fileURL})`;
+                    selectedFile = null;
+                    attachBtn.style.color = 'var(--text-muted)';
+                    attachBtn.classList.remove('loading');
+                } catch (error) {
+                    console.error("Upload error:", error);
+                    alert("Failed to upload file. Chatting without it.");
+                }
+            }
+
+            chatContainer.appendChild(createMessageElement(messageContent, true, userTime));
 
             // Save user message to Firestore if logged in
             if (currentUser) {
-                saveMessage(currentUser.uid, message, true);
+                saveMessage(currentUser.uid, messageContent, true);
             }
             
             // Clear input
@@ -1426,6 +1527,60 @@
 
         loginBtn.addEventListener('click', signIn);
         logoutBtn.addEventListener('click', handleSignOut);
+
+        // --- File Upload Logic ---
+        attachBtn.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            // Basic validation
+            if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                alert("File is too large! Please select a file smaller than 5MB.");
+                return;
+            }
+            
+            selectedFile = file;
+            attachBtn.style.color = 'var(--risk-low)';
+            console.log("File selected:", file.name);
+        });
+
+        async function uploadFile(file, userId) {
+            const fileRef = ref(storage, `chat_uploads/${userId}/${Date.now()}_${file.name}`);
+            const uploadTask = uploadBytesResumable(fileRef, file);
+
+            return new Promise((resolve, reject) => {
+                uploadTask.on('state_changed', 
+                    null, 
+                    (error) => reject(error), 
+                    async () => {
+                        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                        resolve(downloadURL);
+                    }
+                );
+            });
+        }
+
+        // --- PDF Export Logic ---
+        exportBtn.addEventListener('click', () => {
+            const element = document.getElementById('chatContainer');
+            const opt = {
+                margin: 10,
+                filename: `BlueGuard_AI_Transcript_${new Date().toISOString().split('T')[0]}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            // Temporarily hide welcome message for cleaner PDF
+            const welcome = document.getElementById('welcomeMessage');
+            if (welcome) welcome.style.display = 'none';
+
+            html2pdf().from(element).set(opt).save().then(() => {
+                if (welcome && chatContainer.children.length === 0) welcome.style.display = 'block';
+            });
+        });
 
         // Firestore: Save Message
         async function saveMessage(userId, content, isUser, riskScore = 0, category = 'safe') {
