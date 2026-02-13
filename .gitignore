@@ -3,3 +3,7 @@
 __pycache__/
 *.pyc
 .DS_Store
+*.log
+logs.txt
+models_list.txt
+test_ai_call*.py

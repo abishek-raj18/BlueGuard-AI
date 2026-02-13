@@ -18,52 +18,34 @@ load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
-# Enable CORS for all routes (important for development, though relative path on same origin avoids issues)
-CORS(app) 
-
-# ... (omitting unchanged parts for brevity in tool call, but replace_file_content needs context)
-# Actually, I'll allow the tool to handle large file context if I use targeted replacement.
-# But here I need to change import AND the route function.
-# I will use two chunks if possible, or just replace the import line and then the function.
-# The tool supports multiple chunks in `multi_replace_file_content` but I have `replace_file_content`.
-# I will make two separate calls or replace a larger block if needed.
-# Wait, `replace_file_content` is for single contiguous block.
-# Imports are at line 7. Route is at 566.
-# I will use multi_replace_file_content if available?
-# No, I only have `replace_file_content` available in my thought process?
-# Let me check available tools.
-# Yes, `multi_replace_file_content` IS available.
-
-# Use multi_replace_file_content.
-
-import random
-import re
-import os
-import json
-import google.generativeai as genai
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
-
-# Initialize Flask app
-app = Flask(__name__)
 CORS(app)  # Enable CORS for frontend communication
 
 # Initialize Gemini AI
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 gemini_available = False
 
-if GEMINI_API_KEY:
-    try:
-        genai.configure(api_key=GEMINI_API_KEY)
-        gemini_model = genai.GenerativeModel('models/gemini-2.5-flash')
-        gemini_available = True
-        print("Gemini AI initialized successfully!")
-    except Exception as e:
-        print(f"Warning: Could not initialize Gemini AI: {e}")
-else:
-    print("Warning: GEMINI_API_KEY not found in environment.")
+with open("logs.txt", "w") as log_file:
+    log_file.write(f"DEBUG: GEMINI_API_KEY present: {bool(GEMINI_API_KEY)}\n")
+    if GEMINI_API_KEY:
+        log_file.write(f"DEBUG: API Key starts with: {GEMINI_API_KEY[:5]}...\n")
+        try:
+            genai.configure(api_key=GEMINI_API_KEY)
+            # Verify model availability
+            models = [m.name for m in genai.list_models()]
+            log_file.write(f"DEBUG: All models: {models}\n")
+            
+            target_model = 'models/gemini-2.5-flash'
+            gemini_model = genai.GenerativeModel(target_model)
+            gemini_available = True
+            log_file.write(f"Gemini AI initialized successfully! (Model: {target_model})\n")
+        except Exception as e:
+            log_file.write(f"CRITICAL ERROR: Gemini initialization failure: {str(e)}\n")
+            import traceback
+            log_file.write(traceback.format_exc())
+    else:
+        log_file.write("Warning: GEMINI_API_KEY not found in environment.\n")
+
+print(f"DEBUG: Gemini Available: {gemini_available} (Check logs.txt for details)")
 
 # Bot responses for safe messages
 SAFE_RESPONSES = [
@@ -607,4 +589,5 @@ if __name__ == '__main__':
     print("API Endpoint: POST http://localhost:5000/api/check-safety")
     print("="*50 + "\n")
     
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
