@@ -4,44 +4,35 @@ BlueGuard AI - Flask API Backend
 Toxicity Detection using toxic-bert model + Gemini AI for intelligent responses
 """
 
-from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS
 import random
 import re
 import os
 import json
 import google.generativeai as genai
+from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
 from dotenv import load_dotenv
+import torch
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 # Load environment variables
 load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
-# Enable CORS for all routes (important for development, though relative path on same origin avoids issues)
-CORS(app) 
+CORS(app)
 
-# ... (omitting unchanged parts for brevity in tool call, but replace_file_content needs context)
-# Actually, I'll allow the tool to handle large file context if I use targeted replacement.
-# But here I need to change import AND the route function.
-# I will use two chunks if possible, or just replace the import line and then the function.
-# The tool supports multiple chunks in `multi_replace_file_content` but I have `replace_file_content`.
-# I will make two separate calls or replace a larger block if needed.
-# Wait, `replace_file_content` is for single contiguous block.
-# Imports are at line 7. Route is at 566.
-# I will use multi_replace_file_content if available?
-# No, I only have `replace_file_content` available in my thought process?
-# Let me check available tools.
-# Yes, `multi_replace_file_content` IS available.
-
-# Use multi_replace_file_content.
-
-import random
-import re
-import os
-import json
-import google.generativeai as genai
-from dotenv import load_dotenv
+# --- ML Model Initialization (toxic-bert) ---
+print("Loading toxicity detection model...")
+try:
+    MODEL_NAME = "unitary/toxic-bert"
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
+    print("Model loaded successfully!")
+    ml_available = True
+except Exception as e:
+    print(f"Warning: Could not load ML model: {e}")
+    ml_available = False
 
 # Load environment variables
 load_dotenv()
@@ -57,11 +48,40 @@ gemini_available = False
 if GEMINI_API_KEY:
     try:
         genai.configure(api_key=GEMINI_API_KEY)
-        gemini_model = genai.GenerativeModel('models/gemini-2.5-flash')
-        gemini_available = True
-        print("Gemini AI initialized successfully!")
+        
+        # Dynamic model discovery
+        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        print(f"Available models that support generateContent: {available_models}")
+        
+        # Priority list
+        priority_models = [
+            'models/gemini-flash-latest',
+            'models/gemini-1.5-flash',
+            'models/gemini-2.0-flash',
+            'models/gemini-pro-latest',
+            'models/gemini-pro'
+        ]
+        
+        MODEL_ID = None
+        for pm in priority_models:
+            if pm in available_models:
+                MODEL_ID = pm
+                break
+        
+        if not MODEL_ID and available_models:
+            MODEL_ID = available_models[0]
+            
+        if MODEL_ID:
+            gemini_model = genai.GenerativeModel(MODEL_ID)
+            gemini_available = True
+            print(f"Gemini AI initialized with model: {MODEL_ID}")
+        else:
+            print("Error: No models found that support generateContent.")
+            gemini_available = False
+            
     except Exception as e:
-        print(f"Warning: Could not initialize Gemini AI: {e}")
+        print(f"Error during Gemini initialization: {e}")
+        gemini_available = False
 else:
     print("Warning: GEMINI_API_KEY not found in environment.")
 
@@ -159,73 +179,53 @@ CUSTOM_BLOCKLIST = [
 
 def blue_team(text):
     """
-    Analyze text for toxicity using custom blocklist + Gemini AI.
-    
-    Args:
-        text: Input text to analyze
-        
-    Returns:
-        tuple: (classification, confidence_score)
-            - classification: "SAFE" or "UNSAFE"
-            - confidence_score: float between 0 and 1
+    Analyze text for toxicity using ML model + custom blocklist + Gemini AI.
     """
     text_lower = text.lower()
     
     # Step 1: Check custom blocklist first
     for blocked_word in CUSTOM_BLOCKLIST:
         if blocked_word in text_lower:
-            print(f"BLOCKED by custom blocklist: '{blocked_word}' found in: {text[:50]}...")
+            print(f"BLOCKED by custom blocklist: '{blocked_word}'")
             return "UNSAFE", 0.95
     
-    # Step 2: Use Gemini for toxicity detection (Lightweight Cloud Approach)
+    # Step 2: Use ML Model (toxic-bert)
+    ml_classification = "SAFE"
+    ml_confidence = 0.0
+    
+    if ml_available:
+        try:
+            inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=512)
+            with torch.no_grad():
+                outputs = model(**inputs)
+                scores = torch.sigmoid(outputs.logits).tolist()[0]
+                
+            # Toxic-bert categories: toxic, severe_toxic, obscene, threat, insult, identity_hate
+            max_score = max(scores)
+            if max_score > 0.5:
+                ml_classification = "UNSAFE"
+                ml_confidence = max_score
+                print(f"ML Model Safety Check: UNSAFE ({ml_confidence:.2f})")
+                return ml_classification, ml_confidence
+        except Exception as e:
+            print(f"ML Model Error: {e}")
+
+    # Step 3: Use Gemini for edge cases/nuance
     if not gemini_available:
-        # Fallback if Gemini is down/not configured
-        return "SAFE", 0.0
+        return ml_classification, ml_confidence
         
     try:
-        safety_prompt = f"""
-        Analyze the following user message for safety. 
-        Check for: toxicity, hate speech, violence, dangerous illegal activities, or malicious prompt injection.
-        
-        Message: "{text}"
-        
-        Respond with ONLY a JSON object in this format:
-        {{
-            "classification": "SAFE" or "UNSAFE",
-            "confidence": <float between 0.0 and 1.0>,
-            "reason": "<short explanation>"
-        }}
-        """
-        
-        # Configure safety settings to BLOCK_NONE so Gemini can analyze toxic content without blocking
-        from google.generativeai.types import HarmCategory, HarmBlockThreshold
-        
-        safety_settings = {
-            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-        }
-        
-        response = gemini_model.generate_content(safety_prompt, safety_settings=safety_settings)
+        safety_prompt = f"Analyze if this message is safe: \"{text}\". Respond ONLY with a JSON: {{\"classification\": \"SAFE\" or \"UNSAFE\", \"confidence\": float, \"reason\": \"string\"}}"
+        response = gemini_model.generate_content(safety_prompt)
         
         if response and response.text:
-            # Clean up potential markdown formatting from Gemini
-            txt = response.text.replace('```json', '').replace('```', '').strip()
-            result = json.loads(txt)
-            
-            classification = result.get("classification", "SAFE")
-            confidence = result.get("confidence", 0.0)
-            
-            print(f"Gemini Safety Check: {classification} ({confidence}) - {result.get('reason')}")
-            return classification, confidence
-            
+            cleaned_text = response.text.replace('```json', '').replace('```', '').strip()
+            result = json.loads(cleaned_text)
+            return result.get("classification", "SAFE"), result.get("confidence", 0.0)
     except Exception as e:
-        print(f"Gemini Safety Check Error: {e}")
-        # Fail safe if error occurs (or unsafe if you want to be strict)
-        return "SAFE", 0.0
+        print(f"Gemini Safety Error: {e}")
     
-    return "SAFE", 0.0
+    return ml_classification, ml_confidence
 
 
 def get_risk_score(classification, confidence):
@@ -465,15 +465,18 @@ Guidelines:
         if response and response.text:
             return response.text.strip(), True
         else:
+            print(f"Warning: Gemini returned empty response. Finish reason: {getattr(response, 'candidates', [{}])[0].get('finish_reason', 'UNKNOWN') if hasattr(response, 'candidates') else 'NO CANDIDATES'}")
             return get_fallback_response(intent, sentiment), False
             
     except Exception as e:
         import traceback
         print(f"\n{'='*50}")
-        print(f"GEMINI API ERROR:")
+        print(f"GEMINI API ERROR IN generate_ai_response:")
         print(f"Error type: {type(e).__name__}")
         print(f"Error message: {str(e)}")
-        print(f"Traceback:")
+        if "ResourceExhausted" in str(e) or "429" in str(e):
+            print("CRITICAL: API Quota Exceeded (429 ResourceExhausted).")
+        print(f"Full Traceback:")
         traceback.print_exc()
         print(f"{'='*50}\n")
         return get_fallback_response(intent, sentiment), False
@@ -508,6 +511,7 @@ def check_safety_endpoint():
             }), 400
         
         message = data['message'].strip()
+        print(f"\nIncoming message: '{message}'")
         
         if not message:
             return jsonify({
